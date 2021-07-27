@@ -9,6 +9,12 @@ int main (int argc, char **argv) {
     jj_root_begin(&doc);
     jj_number(&doc, "id", 9000237);
     jj_string(&doc, "name", "yes");
+    jj_object_begin(&doc, "address");
+    jj_string(&doc, "street", "Creek Street");
+    jj_number(&doc, "street_number", 10);
+    jj_number(&doc, "zip_code", 58710);
+    jj_object_end(&doc);
+    jj_number(&doc, "items_bought", 3);
     jj_root_end(&doc);
     /*
     jj_root(&doc) {

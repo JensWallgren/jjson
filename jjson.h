@@ -47,6 +47,7 @@ typedef struct {
 
 typedef struct {
     jj_node_type type;
+    int parent;
     union {
         jj_root_node root;
         jj_object_node object;
@@ -106,6 +107,7 @@ void jj_root_begin(jj_context *ctx) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
+    ctx->nodes[ctx->nodes_count].parent = -1;
     ctx->nodes[ctx->nodes_count].type = jj_node_type__root;
 
     ctx->active_stack[ ctx->active_stack_count++ ] = ctx->nodes_count++;
@@ -120,6 +122,7 @@ void jj_object_begin(jj_context *ctx, char *name) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
+    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].type = jj_node_type__object;
     ctx->nodes[ctx->nodes_count].object.name = name;
 
@@ -137,6 +140,7 @@ void jj_number(jj_context *ctx, char *name, int value) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
+    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].type = jj_node_type__number;
     ctx->nodes[ctx->nodes_count].number.name = name;
     ctx->nodes[ctx->nodes_count].number.value = value;
@@ -148,6 +152,7 @@ void jj_string(jj_context *ctx, char *name, char *value) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
+    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].type = jj_node_type__string;
     ctx->nodes[ctx->nodes_count].string.name = name;
     ctx->nodes[ctx->nodes_count].string.value = value;
