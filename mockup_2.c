@@ -8,6 +8,7 @@ int main (int argc, char **argv) {
 
     jj_root_begin(&doc);
     jj_number(&doc, "id", 9000237);
+    jj_string(&doc, "name", "yes");
     jj_root_end(&doc);
     /*
     jj_root(&doc) {
