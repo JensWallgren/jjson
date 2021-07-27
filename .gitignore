@@ -1,0 +1,7 @@
+*.swp
+*.swo
+
+*.pdb
+*.obj
+*.exe
+*.ilk
