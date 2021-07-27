@@ -18,15 +18,9 @@ typedef enum {
     jj_keyword_value__null = -1
 } jj_keyword_value;
 
-typedef struct {
-    int *children;
-    int children_count;
-} jj_root_node;
 
 typedef struct {
     char *name;
-    int *children;
-    int children_count;
 } jj_object_node;
 
 typedef struct {
@@ -48,8 +42,10 @@ typedef struct {
 typedef struct {
     jj_node_type type;
     int parent;
+    int *children;
+    int children_count;
+    int children_capacity;
     union {
-        jj_root_node root;
         jj_object_node object;
         jj_number_node number;
         jj_string_node string;
@@ -77,7 +73,7 @@ void jj_context_allocate(jj_context *ctx) {
             ctx->nodes_capacity = alloc_size;
             memcpy_s(ctx->nodes, alloc_size * sizeof(jj_node), old_memory,
                      ctx->nodes_count * sizeof(jj_node));
-            free(ctx->nodes);
+            free(old_memory);
         } else {
             size_t alloc_size = 16;
             ctx->nodes = calloc(alloc_size, sizeof(jj_node));
@@ -94,7 +90,7 @@ void jj_context_allocate(jj_context *ctx) {
             ctx->active_stack_capacity = alloc_size;
             memcpy_s(ctx->active_stack, alloc_size * sizeof(int), old_memory,
                      ctx->active_stack_count * sizeof(int));
-            free(ctx->active_stack);
+            free(old_memory);
         } else {
             size_t alloc_size = 16;
             ctx->active_stack = calloc(alloc_size, sizeof(int));
@@ -102,6 +98,31 @@ void jj_context_allocate(jj_context *ctx) {
         }
     }
 }
+
+
+jj_add_child_node(jj_context *ctx, int parent_id, int child_id) {
+    jj_node * parent_node = &ctx->nodes[parent_id];
+
+    if (parent_node->children_capacity < parent_node->children_count + 1) {
+        if (parent_node->children_capacity) {
+            size_t alloc_size = parent_node->children_capacity * 2;
+            int *old_memory = parent_node->children;
+            parent_node->children = calloc(alloc_size, sizeof(int));
+            parent_node->children_capacity = alloc_size;
+            memcpy_s(parent_node->children, alloc_size * sizeof(int), old_memory,
+                     parent_node->children_count * sizeof(int));
+            free(old_memory);
+        } else {
+            size_t alloc_size = 16;
+            parent_node->children = calloc(alloc_size, sizeof(int));
+            parent_node->children_capacity = alloc_size;
+        }
+    }
+
+    parent_node->children[parent_node->children_count] = child_id;
+    ++parent_node->children_count;
+}
+
 
 void jj_root_begin(jj_context *ctx) {
     jj_context_allocate(ctx);
@@ -122,9 +143,14 @@ void jj_object_begin(jj_context *ctx, char *name) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
-    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
+
+    int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
+    ctx->nodes[ctx->nodes_count].parent = parent_id;
+
     ctx->nodes[ctx->nodes_count].type = jj_node_type__object;
     ctx->nodes[ctx->nodes_count].object.name = name;
+
+    jj_add_child_node(ctx, parent_id, ctx->nodes_count);
 
     ctx->active_stack[ ctx->active_stack_count++ ] = ctx->nodes_count++;
 }
@@ -140,22 +166,33 @@ void jj_number(jj_context *ctx, char *name, int value) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
-    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
+
+    int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
+    ctx->nodes[ctx->nodes_count].parent = parent_id;
+
     ctx->nodes[ctx->nodes_count].type = jj_node_type__number;
     ctx->nodes[ctx->nodes_count].number.name = name;
     ctx->nodes[ctx->nodes_count].number.value = value;
 
+    jj_add_child_node(ctx, parent_id, ctx->nodes_count);
+
     ++ctx->nodes_count;
 }
+
 
 void jj_string(jj_context *ctx, char *name, char *value) {
     jj_context_allocate(ctx);
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
-    ctx->nodes[ctx->nodes_count].parent = ctx->active_stack[ctx->active_stack_count - 1];
+
+    int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
+    ctx->nodes[ctx->nodes_count].parent = parent_id;
+
     ctx->nodes[ctx->nodes_count].type = jj_node_type__string;
     ctx->nodes[ctx->nodes_count].string.name = name;
     ctx->nodes[ctx->nodes_count].string.value = value;
+
+    jj_add_child_node(ctx, parent_id, ctx->nodes_count);
 
     ++ctx->nodes_count;
 }
