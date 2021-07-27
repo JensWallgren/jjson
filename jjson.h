@@ -1,4 +1,5 @@
 #include <malloc.h>
+#include <assert.h>
 
 typedef enum {
     jj_node_type__null = 0,
@@ -42,6 +43,7 @@ typedef struct {
 typedef struct {
     jj_node_type type;
     int parent;
+    int level;
     int *children;
     int children_count;
     int children_capacity;
@@ -129,6 +131,7 @@ void jj_root_begin(jj_context *ctx) {
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
     ctx->nodes[ctx->nodes_count].parent = -1;
+    ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
     ctx->nodes[ctx->nodes_count].type = jj_node_type__root;
 
     ctx->active_stack[ ctx->active_stack_count++ ] = ctx->nodes_count++;
@@ -146,6 +149,7 @@ void jj_object_begin(jj_context *ctx, char *name) {
 
     int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].parent = parent_id;
+    ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__object;
     ctx->nodes[ctx->nodes_count].object.name = name;
@@ -169,6 +173,7 @@ void jj_number(jj_context *ctx, char *name, int value) {
 
     int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].parent = parent_id;
+    ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__number;
     ctx->nodes[ctx->nodes_count].number.name = name;
@@ -187,6 +192,7 @@ void jj_string(jj_context *ctx, char *name, char *value) {
 
     int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
     ctx->nodes[ctx->nodes_count].parent = parent_id;
+    ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__string;
     ctx->nodes[ctx->nodes_count].string.name = name;
@@ -204,3 +210,35 @@ void jj_string(jj_context *ctx, char *name, char *value) {
 #define jj_root(x) jj_root_begin(x); for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_root_end(x))
 #define jj_object(x, name) jj_object_begin(x, name); for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_object_end(x))
 
+
+char *jj_serialize_node(jj_context *ctx, char *ret, int index) {
+    jj_node *node = &ctx->nodes[index];
+
+    for (int i = 0; i < node->level; ++i)
+        sprintf(ret, "%s  ", ret);
+
+    if (node->type == jj_node_type__root) {
+        sprintf(ret, "%s{\n", ret);
+        for (int i = 0; i < node->children_count; ++i)
+            ret = jj_serialize_node(ctx, ret, node->children[i]);
+        sprintf(ret, "%s}\n", ret);
+    } else if (node->type == jj_node_type__string) {
+        for (int i = 0; i < node->children_count; ++i)
+            ret = jj_serialize_node(ctx, ret, node->children[i]);
+        sprintf(ret, "%s[str]\n", ret);
+    } else {
+        sprintf(ret, "%s[node]\n", ret);
+    }
+
+
+    return ret;
+}
+
+char *jj_serialize(jj_context *ctx) {
+    size_t ret_capacity = 1024;
+    char *ret = calloc(ret_capacity, 1);
+
+    ret = jj_serialize_node(ctx, ret, 0);
+
+    return ret;
+}

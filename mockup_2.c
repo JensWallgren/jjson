@@ -17,5 +17,8 @@ int main (int argc, char **argv) {
         jj_number(&doc, "items_bought", 3);
     };
 
+    char *json = jj_serialize(&doc);
+    printf(json);
+
     return 0;
 }
