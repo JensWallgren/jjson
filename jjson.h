@@ -214,29 +214,66 @@ void jj_string(jj_context *ctx, char *name, char *value) {
 char *jj_serialize_node(jj_context *ctx, char *ret, int index) {
     jj_node *node = &ctx->nodes[index];
 
-    for (int i = 0; i < node->level; ++i)
-        sprintf(ret, "%s  ", ret);
 
     if (node->type == jj_node_type__root) {
-        sprintf(ret, "%s{\n", ret);
+        sprintf(ret, "%s{", ret);
         for (int i = 0; i < node->children_count; ++i)
             ret = jj_serialize_node(ctx, ret, node->children[i]);
+
+        sprintf(ret, "%s\n", ret);
         for (int i = 0; i < node->level; ++i)
             sprintf(ret, "%s  ", ret);
-        sprintf(ret, "%s}\n", ret);
+        sprintf(ret, "%s}", ret);
+        
     } else if (node->type == jj_node_type__object) {
-        sprintf(ret, "%s\"%s\": {\n", ret, node->object.name);
-        for (int i = 0; i < node->children_count; ++i)
-            ret = jj_serialize_node(ctx, ret, node->children[i]);
+        if (ctx->nodes[node->parent].children[0] == index) {
+            sprintf(ret, "%s\n", ret);
+        } else {
+            sprintf(ret, "%s,\n", ret);
+        }
+
         for (int i = 0; i < node->level; ++i)
             sprintf(ret, "%s  ", ret);
-        sprintf(ret, "%s}\n", ret);
+
+        sprintf(ret, "%s\"%s\": {", ret, node->object.name);
+        for (int i = 0; i < node->children_count; ++i)
+            ret = jj_serialize_node(ctx, ret, node->children[i]);
+
+        sprintf(ret, "%s\n", ret);
+        for (int i = 0; i < node->level; ++i)
+            sprintf(ret, "%s  ", ret);
+        sprintf(ret, "%s}", ret);
+
     } else if (node->type == jj_node_type__string) {
-        sprintf(ret, "%s\"%s\": \"%s\",\n", ret, node->string.name, node->string.value);
+        if (ctx->nodes[node->parent].children[0] == index) {
+            sprintf(ret, "%s\n", ret);
+        } else {
+            sprintf(ret, "%s,\n", ret);
+        }
+
+        for (int i = 0; i < node->level; ++i)
+            sprintf(ret, "%s  ", ret);
+
+        sprintf(ret, "%s\"%s\": \"%s\"", ret, node->string.name, node->string.value);
     } else if (node->type == jj_node_type__number) {
-        sprintf(ret, "%s\"%s\": %d,\n", ret, node->number.name, node->number.value);
+        if (ctx->nodes[node->parent].children[0] == index) {
+            sprintf(ret, "%s\n", ret);
+        } else {
+            sprintf(ret, "%s,\n", ret);
+        }
+
+        for (int i = 0; i < node->level; ++i)
+            sprintf(ret, "%s  ", ret);
+
+        sprintf(ret, "%s\"%s\": %d", ret, node->number.name, node->number.value);
     } else {
-        sprintf(ret, "%s[node]\n", ret);
+        if (ctx->nodes[node->parent].children[0] == index) {
+            sprintf(ret, "%s\n", ret);
+        } else {
+            sprintf(ret, "%s,\n", ret);
+        }
+
+        sprintf(ret, "%s[node]", ret);
     }
 
 
