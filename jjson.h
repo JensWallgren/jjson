@@ -221,11 +221,20 @@ char *jj_serialize_node(jj_context *ctx, char *ret, int index) {
         sprintf(ret, "%s{\n", ret);
         for (int i = 0; i < node->children_count; ++i)
             ret = jj_serialize_node(ctx, ret, node->children[i]);
+        for (int i = 0; i < node->level; ++i)
+            sprintf(ret, "%s  ", ret);
         sprintf(ret, "%s}\n", ret);
-    } else if (node->type == jj_node_type__string) {
+    } else if (node->type == jj_node_type__object) {
+        sprintf(ret, "%s\"%s\": {\n", ret, node->object.name);
         for (int i = 0; i < node->children_count; ++i)
             ret = jj_serialize_node(ctx, ret, node->children[i]);
-        sprintf(ret, "%s[str]\n", ret);
+        for (int i = 0; i < node->level; ++i)
+            sprintf(ret, "%s  ", ret);
+        sprintf(ret, "%s}\n", ret);
+    } else if (node->type == jj_node_type__string) {
+        sprintf(ret, "%s\"%s\": \"%s\",\n", ret, node->string.name, node->string.value);
+    } else if (node->type == jj_node_type__number) {
+        sprintf(ret, "%s\"%s\": %d,\n", ret, node->number.name, node->number.value);
     } else {
         sprintf(ret, "%s[node]\n", ret);
     }
