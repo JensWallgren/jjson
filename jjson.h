@@ -160,3 +160,10 @@ void jj_string(jj_context *ctx, char *name, char *value) {
     ++ctx->nodes_count;
 }
 
+#define MERGE_(a,b)  a##b
+#define LABEL_(a) MERGE_(unique_name_, a)
+#define LINEVAR LABEL_(__LINE__)
+
+#define jj_root(x) jj_root_begin(x); for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_root_end(x))
+#define jj_object(x, name) jj_object_begin(x, name); for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_object_end(x))
+
