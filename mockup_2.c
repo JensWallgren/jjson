@@ -15,6 +15,10 @@ int main (int argc, char **argv) {
             jj_number(&doc, "zip_code", 58710);
         };
         jj_number(&doc, "items_bought", 3);
+        jj_array(&doc, "available_deals") {
+            jj_unnamed_string(&doc, "intro deal");
+            jj_unnamed_string(&doc, "other deal");
+        };
     };
 
     char *json = jj_serialize(&doc);
