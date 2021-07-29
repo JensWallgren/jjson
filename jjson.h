@@ -12,6 +12,7 @@ typedef enum {
     jj_node_type__keyword,
     jj_node_type__value,
     jj_node_type__unnamed_string,
+    jj_node_type__unnamed_number,
 } jj_node_type;
 
 typedef enum {
@@ -44,6 +45,10 @@ typedef struct {
 } jj_unnamed_string_node;
 
 typedef struct {
+    int value;
+} jj_unnamed_number_node;
+
+typedef struct {
     char *name;
     jj_keyword_value value;
 } jj_keyword_node;
@@ -62,9 +67,9 @@ typedef struct {
         jj_number_node number;
         jj_string_node string;
         jj_unnamed_string_node unnamed_string;
+        jj_unnamed_number_node unnamed_number;
     };
 } jj_node;
-
 
 
 typedef struct {
@@ -76,6 +81,10 @@ typedef struct {
     int active_stack_capacity;
     int active_stack_count;
 } jj_context;
+
+
+jj_context *_active_context = 0;
+
 
 void jj_context_allocate(jj_context *ctx) {
     if (ctx->nodes_capacity < ctx->nodes_count + 1) {
@@ -139,6 +148,7 @@ jj_add_child_node(jj_context *ctx, int parent_id, int child_id) {
 
 void jj_root_begin(jj_context *ctx) {
     jj_context_allocate(ctx);
+    _active_context = ctx;
 
     ctx->nodes[ctx->nodes_count] = (jj_node){0};
     ctx->nodes[ctx->nodes_count].parent = -1;
@@ -151,6 +161,7 @@ void jj_root_begin(jj_context *ctx) {
 
 void jj_root_end(jj_context *ctx) {
     --ctx->active_stack_count;
+    _active_context = 0;
 }
 
 void jj_object_begin(jj_context *ctx, char *name) {
@@ -218,6 +229,31 @@ void jj_number(jj_context *ctx, char *name, int value) {
     ++ctx->nodes_count;
 }
 
+void jj_num(char *name, int value) {
+    jj_number(_active_context, name, value);
+}
+
+void jj_unnamed_number(jj_context *ctx, int value) {
+    jj_context_allocate(ctx);
+
+    ctx->nodes[ctx->nodes_count] = (jj_node){0};
+
+    int parent_id = ctx->active_stack[ctx->active_stack_count - 1];
+    ctx->nodes[ctx->nodes_count].parent = parent_id;
+    ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
+
+    ctx->nodes[ctx->nodes_count].type = jj_node_type__unnamed_number;
+    ctx->nodes[ctx->nodes_count].unnamed_number.value = value;
+
+    jj_add_child_node(ctx, parent_id, ctx->nodes_count);
+
+    ++ctx->nodes_count;
+}
+
+void jj_unum(int value) {
+    jj_unnamed_number(_active_context, value);
+}
+
 
 void jj_string(jj_context *ctx, char *name, char *value) {
     jj_context_allocate(ctx);
@@ -237,6 +273,10 @@ void jj_string(jj_context *ctx, char *name, char *value) {
     ++ctx->nodes_count;
 }
 
+void jj_str(char *name, char *value) {
+    jj_string(_active_context, name, value);
+}
+
 void jj_unnamed_string(jj_context *ctx, char *value) {
     jj_context_allocate(ctx);
 
@@ -254,6 +294,9 @@ void jj_unnamed_string(jj_context *ctx, char *value) {
     ++ctx->nodes_count;
 }
 
+void jj_ustr(char *value) {
+    jj_unnamed_string(_active_context, value);
+}
 
 
 #define MERGE_(a,b)  a##b
@@ -262,10 +305,14 @@ void jj_unnamed_string(jj_context *ctx, char *value) {
 
 #define jj_root(x) jj_root_begin(x); \
         for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_root_end(x))
+
 #define jj_object(x, name) jj_object_begin(x, name); \
         for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_object_end(x))
+#define jj_obj(name) jj_object(##_active_context, name)
+
 #define jj_array(x, name) jj_array_begin(x, name); \
         for (int LINEVAR = 0; LINEVAR < 1; ++LINEVAR, jj_array_end(x))
+#define jj_arr(name) jj_array(##_active_context, name)
 
 
 void jj_new_line(jj_context *ctx, char *ret, int index) {
@@ -326,6 +373,8 @@ char *jj_serialize_node(jj_context *ctx, char *ret, int index) {
         sprintf(ret, "%s\"%s\"", ret, node->string.name, node->unnamed_string.value);
     } else if (node->type == jj_node_type__number) {
         sprintf(ret, "%s\"%s\": %d", ret, node->number.name, node->number.value);
+    } else if (node->type == jj_node_type__unnamed_number) {
+        sprintf(ret, "%s%d", ret, node->unnamed_number.value);
     } else {
         sprintf(ret, "%s[node]", ret);
     }
