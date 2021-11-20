@@ -61,6 +61,7 @@ typedef struct {
     int *children;
     int children_count;
     int children_capacity;
+    char *name;
     union {
         jj_object_node object;
         jj_array_node array;
@@ -189,7 +190,7 @@ void jj_object_begin(jj_ctx *ctx, char *name) {
     ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__object;
-    ctx->nodes[ctx->nodes_count].object.name = name;
+    ctx->nodes[ctx->nodes_count].name = name;
 
     jj_add_child_node(ctx, parent_id, ctx->nodes_count);
 
@@ -212,7 +213,7 @@ void jj_array_begin(jj_ctx *ctx, char *name) {
     ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__array;
-    ctx->nodes[ctx->nodes_count].array.name = name;
+    ctx->nodes[ctx->nodes_count].name = name;
 
     jj_add_child_node(ctx, parent_id, ctx->nodes_count);
 
@@ -236,7 +237,7 @@ void jj_number(jj_ctx *ctx, char *name, int value) {
     ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__number;
-    ctx->nodes[ctx->nodes_count].number.name = name;
+    ctx->nodes[ctx->nodes_count].name = name;
     ctx->nodes[ctx->nodes_count].number.value = value;
 
     jj_add_child_node(ctx, parent_id, ctx->nodes_count);
@@ -280,7 +281,7 @@ void jj_string(jj_ctx *ctx, char *name, char *value) {
     ctx->nodes[ctx->nodes_count].level = ctx->active_stack_count;
 
     ctx->nodes[ctx->nodes_count].type = jj_node_type__string;
-    ctx->nodes[ctx->nodes_count].string.name = name;
+    ctx->nodes[ctx->nodes_count].name = name;
     ctx->nodes[ctx->nodes_count].string.value = value;
 
     jj_add_child_node(ctx, parent_id, ctx->nodes_count);
@@ -356,44 +357,44 @@ char *jj_serialize_node(jj_ctx *ctx, char *ret, int index, int minified) {
                 sprintf(ret, "%s  ", ret);
         }
         sprintf(ret, "%s}", ret);
-        
-    } else if (node->type == jj_node_type__object) {
-        if (minified) sprintf(ret, "%s\"%s\":{",  ret, node->object.name);
-        else          sprintf(ret, "%s\"%s\": {", ret, node->object.name);
-
-        for (int i = 0; i < node->children_count; ++i)
-            ret = jj_serialize_node(ctx, ret, node->children[i], minified);
-
-        if (!minified) {
-            sprintf(ret, "%s\n", ret);
-            for (int i = 0; i < node->level; ++i)
-                sprintf(ret, "%s  ", ret);
-        }
-        sprintf(ret, "%s}", ret);
-
-    } else if (node->type == jj_node_type__array) {
-        if (minified) sprintf(ret, "%s\"%s\":[",  ret, node->object.name);
-        else          sprintf(ret, "%s\"%s\": [", ret, node->object.name);
-        for (int i = 0; i < node->children_count; ++i)
-            ret = jj_serialize_node(ctx, ret, node->children[i], minified);
-
-        if (!minified) {
-            sprintf(ret, "%s\n", ret);
-            for (int i = 0; i < node->level; ++i)
-                sprintf(ret, "%s  ", ret);
-        }
-        sprintf(ret, "%s]", ret);
-
-    } else if (node->type == jj_node_type__string) {
-        sprintf(ret, "%s\"%s\": \"%s\"", ret, node->string.name, node->string.value);
     } else if (node->type == jj_node_type__unnamed_string) {
-        sprintf(ret, "%s\"%s\"", ret, node->string.name, node->unnamed_string.value);
-    } else if (node->type == jj_node_type__number) {
-        sprintf(ret, "%s\"%s\": %d", ret, node->number.name, node->number.value);
+        sprintf(ret, "%s\"%s\"", ret, node->unnamed_string.value);
     } else if (node->type == jj_node_type__unnamed_number) {
         sprintf(ret, "%s%d", ret, node->unnamed_number.value);
     } else {
-        sprintf(ret, "%s[node]", ret);
+        if (minified) sprintf(ret, "%s\"%s\":",  ret, node->name);
+        else          sprintf(ret, "%s\"%s\": ", ret, node->name);
+
+        if (node->type == jj_node_type__object) {
+            sprintf(ret, "%s{", ret);
+            for (int i = 0; i < node->children_count; ++i)
+                ret = jj_serialize_node(ctx, ret, node->children[i], minified);
+
+            if (!minified) {
+                sprintf(ret, "%s\n", ret);
+                for (int i = 0; i < node->level; ++i)
+                    sprintf(ret, "%s  ", ret);
+            }
+            sprintf(ret, "%s}", ret);
+        } else if (node->type == jj_node_type__array) {
+            sprintf(ret, "%s[", ret);
+            for (int i = 0; i < node->children_count; ++i)
+                ret = jj_serialize_node(ctx, ret, node->children[i], minified);
+
+            if (!minified) {
+                sprintf(ret, "%s\n", ret);
+                for (int i = 0; i < node->level; ++i)
+                    sprintf(ret, "%s  ", ret);
+            }
+            sprintf(ret, "%s]", ret);
+        } else if (node->type == jj_node_type__string) {
+            sprintf(ret, "%s\"%s\"", ret, node->string.value);
+        } else if (node->type == jj_node_type__number) {
+            sprintf(ret, "%s%d", ret, node->number.value);
+        } else {
+            assert(0);
+            sprintf(ret, "%s[node]", ret);
+        }
     }
 
     return ret;

@@ -17,6 +17,8 @@ int main() {
     };
 
 
+    printf( jj_serialize(doc) );
+    printf( "\n------------\n");
     printf( jj_serialize_minified(doc) );
 }
 
